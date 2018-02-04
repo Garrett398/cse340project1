@@ -1,3 +1,23 @@
+//
+// Created by: Jordan Pladgeman 
+// ASU ID: 1210269642
+// Date: 01/24/2017
+// CSE 340 - Assignment 1
+// Bazzi M-W-F (9:40 am) 
+// Description:    Overall goal for this assingment was to add to/change provide code
+// //              to suit our task of lexical analysis on the input string. 
+// //              For a high level review this required:
+// //              * the creation of data structures to model regular expression graphs in
+// //              parse expression (CHAR,UNDERSCORE (empty string),OR, STAR (Kleen Star))
+// //              * taking that graph of a particular grammar rule and it's identifier to
+// //              iterate through an input string char by char and matching or returning
+// //    		   if no match or the char is a space which means that str is fully consumed
+// //              * out of all the grammar rules or regular expression graphs finding the
+// //              longest possible match, if nothing matches there was a syntax error in 
+// //              the input string. 
+// //              * Print out the longest matching prefix/'s till the input string is fully
+// //              matched
+
 /*
 * Copyright (C) Rida Bazzi, 2017
 *
@@ -52,15 +72,15 @@ void Parser::parse_input()
 {
 	//input -> tokens_section INPUT_TEXT
 	parse_tokens_section();
-	Token t = expect(INPUT_TEXT);
-	GetToken(t);
+	Token t = expect(INPUT_TEXT); // Saves the input_text here (t.lexeme)
+	GetToken(t);				  // Finding longest matching prefix entry point
 }
 
 void Parser::parse_tokens_section()
 {
 	// tokens_section -> token_list HASH
 	parse_token_list();
-	expect(HASH);
+	expect(HASH);   // A hash represents the end of the regular expression rule/'s
 }
 
 void Parser::parse_token_list()
@@ -68,15 +88,15 @@ void Parser::parse_token_list()
 	// token_list -> token
 	// token_list -> token COMMA token_list
 
-	regList.push_back(parse_token());
-	Token t = peek();
-	if (t.token_type == COMMA)
+	reg_vector.push_back(parse_token()); // Add the regExp's to the reg_vector
+	Token t = peek();                    // used to check if the grammar section has more rules
+	if (t.token_type == COMMA)          // <- comma will mean more rules
 	{
 		// token_list -> token COMMA token_list
 		expect(COMMA);
 		parse_token_list();
 	}
-	else if (t.token_type == HASH)
+	else if (t.token_type == HASH)  // At this point the program will return to parse_input()
 	{
 		// token_list -> token
 	}
@@ -87,13 +107,13 @@ void Parser::parse_token_list()
 
 }
 
-struct regExp* Parser::parse_token()
+struct regExp* Parser::parse_token() 
 {
 	// token -> ID expr
-	regExp* exp = new regExp();
-	exp->token_name = (expect(ID)).lexeme; // token_name
-	exp->reg = parse_expr();
-	return exp;
+	regExp* exp = new regExp(); // Creating memory for a new regExp
+	exp->token_name = (expect(ID)).lexeme; // saves token_name
+	exp->reg = parse_expr(); // saves reg 
+	return exp; // return the regExp to be added to the vector
 
 }
 
@@ -109,7 +129,7 @@ struct REG* Parser::parse_expr()
 	if (t.token_type == CHAR) {
 
 		// expr -> CHAR
-		return makeNode(t);
+		return makeNode(t); // Trying to keep this code dry with the makeNode()
 	}
 	else if (t.token_type == UNDERSCORE) {
 
@@ -134,7 +154,7 @@ struct REG* Parser::parse_expr()
 			if (t2.token_type == DOT)
 			{
 
-				r1->accepting->firstNeighbor = r2->starting;
+				r1->accepting->first_neighbor = r2->starting;
 				r1->accepting->first_label = '_';
 				bothREG->starting = r1->starting;
 				bothREG->accepting = r2->accepting;
@@ -153,11 +173,11 @@ struct REG* Parser::parse_expr()
 				r2->accepting->first_label = '_';
 
 
-				r1->accepting->firstNeighbor = bothREG->accepting;
-				r2->accepting->firstNeighbor = bothREG->accepting;
+				r1->accepting->first_neighbor = bothREG->accepting;
+				r2->accepting->first_neighbor = bothREG->accepting;
 
-				bothREG->starting->firstNeighbor = r1->starting;
-				bothREG->starting->secondNeighbor = r2->starting;
+				bothREG->starting->first_neighbor = r1->starting;
+				bothREG->starting->second_neighbor = r2->starting;
 				return bothREG;
 
 			}
@@ -168,26 +188,26 @@ struct REG* Parser::parse_expr()
 			// Create REG
 			REG* r2 = new REG();
 			// Create two new nodes
-			REG_node* starting = new REG_node;
-			REG_node* accepting = new REG_node;
+			REG_node* node_LHS = new REG_node;
+			REG_node* node_RHS = new REG_node;
 
 
 			// Link the new starting node3 to the old starting node1
-			starting->firstNeighbor = r1->starting;
-			starting->first_label = '_';
+			node_LHS->first_neighbor = r1->starting;
+			node_LHS->first_label = '_';
 
-			starting->secondNeighbor = accepting; // Create a path from new starting node3 to accepting node4
-			starting->second_label = '_';     // update label
+			node_LHS->second_neighbor = node_RHS; // Create a path from new starting node3 to accepting node4
+			node_LHS->second_label = '_';     // update label
 
-			r1->accepting->firstNeighbor = r1->starting;   // Link up old accepting node2 to new accepting node4
+			r1->accepting->first_neighbor = r1->starting;   // Link up old accepting node2 to new accepting node4
 			r1->accepting->first_label = '_';		// upadate label
 
 													// Create a path from node2 back to node1
-			r1->accepting->secondNeighbor = accepting;
+			r1->accepting->second_neighbor = node_RHS;
 			r1->accepting->second_label = '_';            // update label
 
-			r2->starting = starting;     // Update starting and accepting nodes
-			r2->accepting = accepting;
+			r2->starting = node_LHS;     // Update starting and accepting nodes
+			r2->accepting = node_RHS;
 
 			return r2;
 		}
@@ -202,25 +222,25 @@ struct REG* Parser::parse_expr()
 struct REG* Parser::makeNode(Token t) {
 	// Create two nodes
 	REG* r1 = new REG();
-	REG_node* node1 = new REG_node();
-	REG_node* node2 = new REG_node();
+	REG_node* node_LHS = new REG_node();
+	REG_node* node_RHS = new REG_node();
 
-	// Establish the link between node1 and node2
-	node1->firstNeighbor = node2;
+	// Establish the link between node_LHS and node_RHS
+	node_LHS->first_neighbor = node_RHS;
 	if (t.token_type == UNDERSCORE)
 	{
-		node1->first_label = '_';
+		node_LHS->first_label = '_';
 
 	}
 	else
 	{
-		//Set the label for node 1 with the char that gets passed in
-		node1->first_label = *t.lexeme.c_str();
+		//Set the label for node_LHS with the char that gets passed in
+		node_LHS->first_label = *t.lexeme.c_str();
 
 	}
 	// Set REG starting and accepting nodes
-	r1->starting = node1;
-	r1->accepting = node2;
+	r1->starting = node_LHS;
+	r1->accepting = node_RHS;
 
 	// Return the REG
 	return r1;
@@ -234,57 +254,54 @@ void Parser::ParseProgram()
 
 }
 
-void Parser::GetToken(Token t)
+void Parser::GetToken(Token t) // Small summary of this function in header file
 {
 
-	int p = 0;
+	int p = 0; 
+	// Trims spaces
 	size_t startpos = t.lexeme.find_first_not_of(" ");
 	size_t endpos = t.lexeme.find_last_not_of(" ");
 	t.lexeme = t.lexeme.substr(startpos, endpos - startpos + 1);
 	// This is the loop that makes sure the whole string was ran through
 	while (p <= (t.lexeme.length() - 1))
 	{
-		// Removes white space from the input text
+		// This vector contains the longest matching prefix for each reg
+		vector <matched*> matched_vec;
 
-		// This vector contains the longest matching prefix for each reg-ex
-		vector <matched*> matchedVec;
-
-		// This loop address each reg-ex in the regList vector individually 
-		for (int i = 0; i <= regList.size() - 1; i++)
+		// This loop address each reg in the reg_vector
+		for (int i = 0; i <= reg_vector.size() - 1; i++)
 		{
-			// Save the longest matching prefix for this reg-ex in tmp
-			struct lastMatched* tmp = match(regList[i]->reg, t.lexeme, p);
+			// Save the longest matching prefix for this reg in tmp
+			struct lastMatched* tmp = match(reg_vector[i]->reg, t.lexeme, p);
 			// as long as there is at least a one char match
 			if (tmp!=NULL)
 			{
 				// add the token_name and lexeme string to the matched vector
 				matched* match = new matched();
-				match->token_name = regList.at(i)->token_name;
+				match->token_name = reg_vector.at(i)->token_name;
 				match->matched = tmp;
-				matchedVec.push_back(match);
+				matched_vec.push_back(match);
 			}
 		}
-		
-		
-		if (matchedVec.size() != 0)
+
+		if (matched_vec.size() != 0) // if there was at least one match
 		{
-			// if there was at least one match
-			int length = 0;
-			int index = 0;
-			// Find longest matched
-			for (int x = 0; x <= matchedVec.size() - 1; x++)
+			int length = -1;
+			int index = -1;
+			// Go through matched_vec and find longest matched
+			for (int x = 0; x <= matched_vec.size() - 1; x++)
 			{
-				if (matchedVec.at(x)->matched->lexeme.length() > length)
+				if (matched_vec.at(x)->matched->lexeme.length() > length)
 				{
-					length = matchedVec.at(x)->matched->lexeme.length();
+					length = matched_vec.at(x)->matched->lexeme.length();
 					index = x;
 				}
 			}
 			
-			p = matchedVec[index]->matched->str_position+1;
+			p = matched_vec[index]->matched->str_position+1;
 			
 			
-			cout << matchedVec[index]->token_name << " , \"" << matchedVec[index]->matched->lexeme << "\"" << endl;
+			cout << matched_vec[index]->token_name << " , \"" << matched_vec[index]->matched->lexeme << "\"" << endl;
 		}
 		else
 		{
@@ -296,12 +313,11 @@ void Parser::GetToken(Token t)
 
 struct lastMatched* Parser::match(REG* reg, string s, int p)
 {
-    vector<REG_node*> matched_vector;
-	vector <REG_node*> intial_vector;
-	intial_vector.push_back(reg->starting);
+    vector<REG_node*> matched_vec;
+	vector <REG_node*> initial_vec;
+	initial_vec.push_back(reg->starting);
 	// Find all the nodes that can be reached by consuming one a '_'
-	find_open_paths(reg->starting, &intial_vector);
-	
+	locate_underscore_route(reg->starting, &initial_vec);
 	// skip spaces in front of strings
 	char c = s.at(p);
 	while(isspace(c))
@@ -309,118 +325,107 @@ struct lastMatched* Parser::match(REG* reg, string s, int p)
 		p++;
 		c = s.at(p);
 	}
-	int start_pos = p; // this is just in case you skip spaces to know where your at
+	int start_pos = p; // this is just in case you skip spaces to know where the substr is
     int last_pos;
 	while(p <= s.length()-1)
 	{
-	   
-	
-       vector <REG_node*> tmp_vector;
-       for(int i = 0; i< intial_vector.size(); i++) 
-       {
-         find_consume_paths(intial_vector.at(i), &tmp_vector, c);	
-       }  
-       for(int i = 0; i< tmp_vector.size(); i++) 
-       {
-         find_open_paths(tmp_vector.at(i), &tmp_vector);	
-       }
-       
-       
-       
-	   if(tmp_vector.empty())  
-	   {
-	    if(matched_vector.size() > 0)
+        vector <REG_node*> tmp_vector;
+		// Fill the tmp_vector with the nodes that are reachable by consuming the char c
+        for(int i = 0; i< initial_vec.size(); i++) 
         {
-         lastMatched* last = new lastMatched;
-         last->lexeme = s.substr(start_pos, last_pos-start_pos+1);
-         last->str_position = last_pos; 
-         return last;      
-        }
-        return NULL;
-	   } 
-	   for(int i=0; i < tmp_vector.size(); i++)
-	   {
-	    if(tmp_vector.at(i) == reg->accepting)
+     		match_one_char(initial_vec.at(i), &tmp_vector, c);	
+        }  
+		// Fill the tmp vector with nodes that are reachable by '_'
+        for(int i = 0; i< tmp_vector.size(); i++) 
+        {
+         	locate_underscore_route(tmp_vector.at(i), &tmp_vector);	
+        }     
+       // If there were reachable nodes
+	    if(tmp_vector.empty())  
 	    {
-	        last_pos = p; 
-	        matched_vector = tmp_vector;  
-	    }
-	
-	   } 
-	    intial_vector = tmp_vector;
-	    
-	    p++;
-        c = s[p]; 
-
+			// check matched_vec size
+	   		if(matched_vec.size() > 0)
+        	{  // break the while loop
+		 		break;
+       		 }
+        return NULL; // or return null
+	    } 
+	    for(int i=0; i < tmp_vector.size(); i++)
+	    { // check for accepting node in the tmp_vector
+	    	if(tmp_vector.at(i) == reg->accepting)
+	    	{
+	        	last_pos = p; 
+	        	matched_vec = tmp_vector;  
+	    	}	
+	    } 
+		// update initial_vec
+	    initial_vec = tmp_vector;
+	    // increase position
+		p++;
+		// update char c with the new char at the new position
+        c = s.at(p); 
+		// If char c is a space, check matched_vec then break the loop
         if(c==' ')
         {
-            if(matched_vector.size() > 0)
-            {
-                lastMatched* last = new lastMatched;
-                last->lexeme = s.substr(start_pos, last_pos-start_pos+1);
-                last->str_position = last_pos; 
-                return last;      
+            if(matched_vec.size() > 0)
+            {  
+				break;   
             }
             return NULL; 
         }
     	
     }
-    if(matched_vector.size() > 0)
+	// Add the substring, and substring position to a new created last
+	// and return (if there was matches)
+    if(matched_vec.size() > 0)
     {
-      lastMatched* last = new lastMatched;
-      last->lexeme = s.substr(start_pos, last_pos-start_pos+1);
-      last->str_position = last_pos; 
-      return last;      
-     }
-     return NULL;
+    	lastMatched* last = new lastMatched;
+    	last->lexeme = s.substr(start_pos, last_pos-start_pos+1);
+    	last->str_position = last_pos; 
+    	return last;      
+    }
+    return NULL; 
 }
 
-
-
-
-void Parser::find_open_paths(REG_node* node, vector <REG_node*>* vec)
+void Parser::locate_underscore_route(REG_node* node, vector <REG_node*>* vec)
 {
 	// if the first label - '_' add to vector recall function with that node
 	if (node->first_label == '_')
 	{
-		if (find(vec->begin(), vec->end(), node->firstNeighbor) == vec->end())
+		if (find(vec->begin(), vec->end(), node->first_neighbor) == vec->end()) // Find function explained bellow in match_one_char()
 		{
-			vec->push_back(node->firstNeighbor);
-			find_open_paths(node->firstNeighbor, vec);
+			vec->push_back(node->first_neighbor);
+			locate_underscore_route(node->first_neighbor, vec); // Recursively call till the node has been added already
 		}
 	}
 	// if the second nieghbor's label - '_' add to vector recall function with that node
 	if (node->second_label == '_')
 	{
-		if (find(vec->begin(), vec->end(), node->secondNeighbor) == vec->end())
+		if (find(vec->begin(), vec->end(), node->second_neighbor) == vec->end())
 		{
-			vec->push_back(node->secondNeighbor);
-			find_open_paths(node->secondNeighbor, vec);
+			vec->push_back(node->second_neighbor);
+			locate_underscore_route(node->second_neighbor, vec);
 		}
 	}
 
 }
-
-void Parser::find_consume_paths(REG_node* node, vector <REG_node*>* vec, char c)
+// Matching one char that gets passed in to the node's first or second nieghbor
+void Parser::match_one_char(REG_node* node, vector <REG_node*>* vec, char c)
 {
- if (node->first_label == c)
- {
-    if (find(vec->begin(), vec->end(), node->firstNeighbor) == vec->end())
+ 	if (node->first_label == c) // If the char matches go ahead and see if the node's
+	{                           // first nieghbor is in the vec already
+    	if (find(vec->begin(), vec->end(), node->first_neighbor) == vec->end()) // If the function returns vec->end()
+		{                                                                      // this means it went through the vec and
+			vec->push_back(node->first_neighbor);		                       // go to the end without finding the node's
+		}                                                                      // first neighbor
+ 	} 
+ 	if (node->second_label == c) // Same as above only with the node's second neighbor
+ 	{
+    	if (find(vec->begin(), vec->end(), node->second_neighbor) == vec->end())
 		{
-			vec->push_back(node->firstNeighbor);		
-		}
- 
- } 
- if (node->second_label == c)
- {
-    if (find(vec->begin(), vec->end(), node->secondNeighbor) == vec->end())
-		{
-			vec->push_back(node->secondNeighbor);		
-		}
- 
- } 
- 
-	
+			vec->push_back(node->second_neighbor);		
+		} 
+ 	} 	
 }
 
 int main()
